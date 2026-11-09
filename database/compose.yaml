@@ -1,17 +1,24 @@
 services:
-  postgres-db:
-    image: postgres
+  postgresdb:
+    image: postgres:16-alpine
     container_name: postgresdb
+    restart: always
     environment:
-      - POSTGRES_PASSWORD=123456
-      - POSTGRES_USER=root
-      - POSTGRES_DB=mydatabase
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: "StrongDbPassword123!"
     ports:
-      - 5432:5432
+      - "0.0.0.0:5433:5432"
     volumes:
-      - pgdata:/var/lib/postgresql 
+      - postgres_data:/var/lib/postgresql/data
     networks:
-      - lsc-network
+      - devops-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
   pgadmin:
     image: dpage/pgadmin4
     container_name: pgadmin
@@ -21,9 +28,9 @@ services:
     ports:
       - "8080:80"
     depends_on:
-      - postgres-db   # Ensure pgAdmin starts after postgresql db
+      - postgresdb
     networks:
-      - lsc-network
+      - devops-network
   redis-db:
     image: redis
     container_name: redis-db
@@ -32,7 +39,7 @@ services:
     volumes:
       - redis-data:/data
     networks:
-      - lsc-network
+      - devops-network
   mongodb:
     image: mongo
     container_name: mongodb
@@ -41,18 +48,35 @@ services:
     volumes:
       - mongo-data:/data/db
     networks:
-      - lsc-network
+      - devops-network
     environment:
       MONGO_INITDB_ROOT_USERNAME: admin
       MONGO_INITDB_ROOT_PASSWORD: 123456
+  mssql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: mssql
+    restart: always
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "Ifs_Sql_2026!"
+      MSSQL_PID: Developer
+      MSSQL_MEMORY_LIMIT_MB: "1024"
+    ports:
+      - "0.0.0.0:1433:1433"
+    volumes:
+      - mssql-data:/var/opt/mssql
+    networks:
+      - devops-network
 networks:
-  lsc-network:
-    name: lsc-network
+  devops-network:
+    name: devops-network
     driver: bridge
 volumes:
-  pgdata:
+  postgres_data:
     external: true
+    name: ifs-keycloak-broker_postgres_data
   redis-data:
     external: true
   mongo-data:
     external: true
+  mssql-data:
